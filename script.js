@@ -7,11 +7,11 @@
  * STRICT COMPLIANCE:
  * ALL core calculations (counting 1s, calculating parity, storing frames,
  * flipping bits, checking error parity) are executed strictly in C (parity.c)
- * via WebAssembly. JavaScript only coordinates UI events and displays results.
+ * via WebAssembly / C-mirror.
  * ============================================================================
  */
 
-// C function bindings (populated via Module.cwrap)
+// C function bindings
 let c_set_bit = null;
 let c_count_ones = null;
 let c_generate_parity = null;
@@ -27,8 +27,8 @@ let isFrameSent = false;
 let isDelivered = false;
 
 // DOM Elements
-const btnModeEven = document.getElementById('btn-mode-even');
-const btnModeOdd = document.getElementById('btn-mode-odd');
+const radioEven = document.getElementById('radio-even');
+const radioOdd = document.getElementById('radio-odd');
 const modeHint = document.getElementById('mode-hint');
 
 const btnGenerateParity = document.getElementById('btn-generate-parity');
@@ -38,6 +38,7 @@ const valMessageOnes = document.getElementById('val-message-ones');
 const valParityBit = document.getElementById('val-parity-bit');
 const valSentFrameText = document.getElementById('val-sent-frame-text');
 
+const panelSender = document.getElementById('panel-sender');
 const panelNoise = document.getElementById('panel-noise');
 const noiseStatusAlert = document.getElementById('noise-status-alert');
 const noiseStatusText = document.getElementById('noise-status-text');
@@ -54,6 +55,7 @@ const valStatusDesc = document.getElementById('val-status-desc');
 const btnResetAll = document.getElementById('btn-reset-all');
 const btnDemoExample = document.getElementById('btn-demo-example');
 const cConsoleOutput = document.getElementById('c-console-output');
+const truthTableCard = document.getElementById('truth-table-card');
 
 /**
  * Initialize WebAssembly C function wrappers
@@ -77,7 +79,7 @@ function initWasmBindings() {
     c_count_frame_ones = Module.count_frame_ones;
   }
 
-  // Initialize initial message bits to match default UI: [1, 0, 1, 1, 0, 1, 1, 1]
+  // Initialize initial message bits in C: [1, 0, 1, 1, 0, 1, 1, 1]
   if (c_set_bit) {
     const defaultBits = [1, 0, 1, 1, 0, 1, 1, 1];
     for (let i = 0; i < 8; i++) {
@@ -85,7 +87,23 @@ function initWasmBindings() {
     }
   }
 
+  highlightTruthTableRow();
   updateLiveTerminal();
+}
+
+/**
+ * Set active step link in top navigation
+ */
+function setActiveStepNav(stepNum) {
+  const stepLinks = document.querySelectorAll('.steps-nav .step-link');
+  stepLinks.forEach(link => {
+    const step = parseInt(link.getAttribute('data-step'), 10);
+    if (step === stepNum) {
+      link.classList.add('active');
+    } else {
+      link.classList.remove('active');
+    }
+  });
 }
 
 /**
@@ -94,15 +112,13 @@ function initWasmBindings() {
 function setParityMode(mode) {
   currentMode = mode;
   if (mode === 0) {
-    btnModeEven.classList.add('active');
-    btnModeOdd.classList.remove('active');
-    modeHint.textContent = 'Even: Total 1s in the 9-bit frame must be even.';
-    valReceiverMode.textContent = 'Even Parity';
+    if (radioEven) radioEven.checked = true;
+    if (modeHint) modeHint.textContent = 'Even parity : the total number of 1s in the 9-bit frame must be even.';
+    if (valReceiverMode) valReceiverMode.textContent = 'Even Parity';
   } else {
-    btnModeOdd.classList.add('active');
-    btnModeEven.classList.remove('active');
-    modeHint.textContent = 'Odd: Total 1s in the 9-bit frame must be odd.';
-    valReceiverMode.textContent = 'Odd Parity';
+    if (radioOdd) radioOdd.checked = true;
+    if (modeHint) modeHint.textContent = 'Odd parity : the total number of 1s in the 9-bit frame must be odd.';
+    if (valReceiverMode) valReceiverMode.textContent = 'Odd Parity';
   }
 
   invalidateGeneratedFrame();
@@ -113,46 +129,57 @@ function setParityMode(mode) {
  * Invalidate downstream panels when input or mode changes
  */
 function invalidateGeneratedFrame() {
-  cardParityResult.classList.add('hidden');
-  panelNoise.classList.add('panel-dimmed');
-  panelReceiver.classList.add('panel-dimmed');
+  // Hide results section in Step 1
+  if (cardParityResult) cardParityResult.classList.add('hidden');
+
+  // Deactivate Step 2 and Step 3
+  if (panelNoise) panelNoise.classList.add('panel-inactive');
+  if (panelReceiver) panelReceiver.classList.add('panel-inactive');
   isFrameSent = false;
   isDelivered = false;
+
+  setActiveStepNav(1);
 
   // Disable noise bit buttons
   for (let i = 0; i < 9; i++) {
     const btn = document.getElementById(`nbit-${i}`);
     if (btn) {
       btn.disabled = true;
-      btn.textContent = '0';
-      btn.className = 'bit-button';
+      btn.classList.remove('bit-corrupted');
     }
   }
-  btnResetNoise.disabled = true;
-  btnDeliverReceiver.disabled = true;
+  if (btnResetNoise) btnResetNoise.disabled = true;
+  if (btnDeliverReceiver) btnDeliverReceiver.disabled = true;
 
   // Reset noise alert
-  noiseStatusAlert.className = 'channel-status-banner status-waiting';
-  noiseStatusText.textContent = 'Waiting for a frame from the sender.';
+  if (noiseStatusAlert) {
+    noiseStatusAlert.className = 'channel-status-line status-waiting';
+  }
+  if (noiseStatusText) {
+    noiseStatusText.textContent = 'Waiting for frame from sender...';
+  }
 
   // Clear receiver UI
   for (let i = 0; i < 9; i++) {
     const rbox = document.getElementById(`rbit-${i}`);
     if (rbox) {
-      rbox.textContent = '-';
-      rbox.className = 'bit-button bit-static';
+      rbox.classList.remove('bit-corrupted');
     }
   }
-  valReceiverOnes.textContent = '-';
-  receiverStatusCard.className = 'receiver-status-card status-awaiting';
-  valStatusTitle.textContent = 'AWAITING DELIVERY';
-  valStatusDesc.textContent = 'Complete Step 1 and Step 2 to verify data integrity.';
+  if (valReceiverOnes) valReceiverOnes.textContent = '-';
+  if (receiverStatusCard) {
+    receiverStatusCard.className = 'verdict-container status-awaiting';
+  }
+  if (valStatusTitle) valStatusTitle.textContent = 'AWAITING DELIVERY';
+  if (valStatusDesc) {
+    valStatusDesc.textContent = 'Complete Step 1 and Step 2 to verify data integrity.';
+  }
 
   updateLiveTerminal();
 }
 
 /**
- * Toggle a message bit at index i (0 to 7)
+ * Toggle a message bit at index i (0 to 7) when rectangle is clicked
  */
 function toggleMessageBit(index) {
   const btn = document.getElementById(`sbit-${index}`);
@@ -166,21 +193,16 @@ function toggleMessageBit(index) {
     c_set_bit(index, newVal);
   }
 
-  // Update UI button appearance
+  // Update UI rectangle text
   btn.textContent = newVal;
-  if (newVal === 1) {
-    btn.classList.add('bit-active');
-  } else {
-    btn.classList.remove('bit-active');
-  }
 
+  highlightTruthTableRow();
   invalidateGeneratedFrame();
-  updateLiveTerminal();
 }
 
 /**
  * Step 1: Generate Parity Bit
- * Calls C functions to construct frame and compute parity
+ * Calculates parity and reveals results card with "Send 9-bit Frame" button
  */
 function handleGenerateParity() {
   if (!c_generate_parity || !c_count_ones || !c_get_frame) {
@@ -201,12 +223,12 @@ function handleGenerateParity() {
 
   // Update UI with C results
   const onesCountType = onesCount % 2 === 0 ? 'Even' : 'Odd';
-  valMessageOnes.textContent = `${onesCount} (${onesCountType})`;
-  valParityBit.textContent = parityBit;
-  valSentFrameText.textContent = `[ ${frameValues.join(', ')} ]`;
+  if (valMessageOnes) valMessageOnes.textContent = `${onesCount} (${onesCountType})`;
+  if (valParityBit) valParityBit.textContent = parityBit;
+  if (valSentFrameText) valSentFrameText.textContent = frameValues.join('');
 
-  // Reveal results card
-  cardParityResult.classList.remove('hidden');
+  // Reveal results box
+  if (cardParityResult) cardParityResult.classList.remove('hidden');
 
   updateLiveTerminal();
 }
@@ -226,28 +248,25 @@ function handleSendFrame() {
     if (nbtn) {
       nbtn.textContent = bitVal;
       nbtn.disabled = false;
-      nbtn.className = 'bit-button';
-      if (bitVal === 1) {
-        nbtn.classList.add('bit-active');
-      }
+      nbtn.classList.remove('bit-corrupted');
     }
   }
 
-  // Activate Panel 2
-  panelNoise.classList.remove('panel-dimmed');
-  btnResetNoise.disabled = false;
-  btnDeliverReceiver.disabled = false;
+  // Activate Step 2 Panel
+  if (panelNoise) panelNoise.classList.remove('panel-inactive');
+  if (btnResetNoise) btnResetNoise.disabled = false;
+  if (btnDeliverReceiver) btnDeliverReceiver.disabled = false;
 
   // Set clean channel alert
-  noiseStatusAlert.className = 'channel-status-banner status-clean';
-  noiseStatusText.textContent = 'Frame loaded into channel. Transmission is clean.';
+  if (noiseStatusAlert) noiseStatusAlert.className = 'channel-status-line';
+  if (noiseStatusText) noiseStatusText.textContent = 'Frame loaded: Transmission is clean';
 
+  setActiveStepNav(2);
   updateLiveTerminal();
 }
 
 /**
- * Step 2: Click a bit in Channel to simulate noise (flip bit)
- * Calls C function flip_bit(i)
+ * Step 2: Click any bit in Channel to simulate noise (flip bit)
  */
 function handleFlipBit(index) {
   if (!c_flip_bit || !c_get_frame || !isFrameSent) return;
@@ -270,30 +289,30 @@ function handleFlipBit(index) {
     const val = c_get_frame(i);
     const btn = document.getElementById(`nbit-${i}`);
     if (btn) {
-      btn.className = 'bit-button';
-      if (val === 1) btn.classList.add('bit-active');
       if (val !== sentFrameBaseline[i]) {
         btn.classList.add('bit-corrupted');
         corruptedCount++;
+      } else {
+        btn.classList.remove('bit-corrupted');
       }
     }
   }
 
-  // Update status banner matching screenshots exactly
+  // Update status alert
   if (corruptedCount === 0) {
-    noiseStatusAlert.className = 'channel-status-banner status-clean';
-    noiseStatusText.textContent = 'Frame loaded into channel. Transmission is clean.';
+    if (noiseStatusAlert) noiseStatusAlert.className = 'channel-status-line';
+    if (noiseStatusText) noiseStatusText.textContent = 'Frame loaded: Transmission is clean';
   } else if (corruptedCount === 1) {
-    noiseStatusAlert.className = 'channel-status-banner status-corrupted';
-    noiseStatusText.textContent = '1 bit changed: Channel noise detected';
+    if (noiseStatusAlert) noiseStatusAlert.className = 'channel-status-line status-corrupted';
+    if (noiseStatusText) noiseStatusText.textContent = '1 bit changed: Channel noise detected';
   } else {
-    noiseStatusAlert.className = 'channel-status-banner status-corrupted';
-    noiseStatusText.textContent = `${corruptedCount} bits changed: Channel noise detected`;
+    if (noiseStatusAlert) noiseStatusAlert.className = 'channel-status-line status-corrupted';
+    if (noiseStatusText) noiseStatusText.textContent = `${corruptedCount} bits changed: Channel noise detected`;
   }
 
   // Dim receiver if it was previously evaluated
   if (isDelivered) {
-    panelReceiver.classList.add('panel-dimmed');
+    if (panelReceiver) panelReceiver.classList.add('panel-inactive');
     isDelivered = false;
   }
 
@@ -301,8 +320,7 @@ function handleFlipBit(index) {
 }
 
 /**
- * Step 2: Reset Noise in Channel (Clean Frame)
- * Calls C function generate_parity(currentMode) to restore clean frame in C
+ * Step 2: Reset Noise in Channel (Restore clean frame)
  */
 function handleResetNoise() {
   if (!c_generate_parity || !c_get_frame || !isFrameSent) return;
@@ -314,18 +332,15 @@ function handleResetNoise() {
     const nbtn = document.getElementById(`nbit-${i}`);
     if (nbtn) {
       nbtn.textContent = bitVal;
-      nbtn.className = 'bit-button';
-      if (bitVal === 1) {
-        nbtn.classList.add('bit-active');
-      }
+      nbtn.classList.remove('bit-corrupted');
     }
   }
 
-  noiseStatusAlert.className = 'channel-status-banner status-clean';
-  noiseStatusText.textContent = 'Frame loaded into channel. Transmission is clean.';
+  if (noiseStatusAlert) noiseStatusAlert.className = 'channel-status-line';
+  if (noiseStatusText) noiseStatusText.textContent = 'Frame loaded: Transmission is clean';
 
   if (isDelivered) {
-    panelReceiver.classList.add('panel-dimmed');
+    if (panelReceiver) panelReceiver.classList.add('panel-inactive');
     isDelivered = false;
   }
 
@@ -334,13 +349,13 @@ function handleResetNoise() {
 
 /**
  * Step 3: Deliver Frame to Receiver & Check Parity Rule
- * Calls C function check_frame(mode) and count_frame_ones()
  */
 function handleDeliverReceiver() {
   if (!panelReceiver || !c_get_frame || !c_count_frame_ones || !c_check_frame || !isFrameSent) return;
 
   isDelivered = true;
-  panelReceiver.classList.remove('panel-dimmed');
+  panelReceiver.classList.remove('panel-inactive');
+  setActiveStepNav(3);
 
   // Populate received 9 bits from C
   for (let i = 0; i < 9; i++) {
@@ -348,12 +363,10 @@ function handleDeliverReceiver() {
     const rbox = document.getElementById(`rbit-${i}`);
     if (rbox) {
       rbox.textContent = rcvVal;
-      rbox.className = 'bit-button bit-static';
-      if (rcvVal === 1) {
-        rbox.classList.add('bit-active');
-      }
       if (rcvVal !== sentFrameBaseline[i]) {
         rbox.classList.add('bit-corrupted');
+      } else {
+        rbox.classList.remove('bit-corrupted');
       }
     }
   }
@@ -362,23 +375,47 @@ function handleDeliverReceiver() {
   const totalOnes = c_count_frame_ones();
   const isValid = c_check_frame(currentMode);
 
-  // Update 1s count
-  const onesParityStr = totalOnes % 2 === 0 ? 'Even' : 'Odd';
-  valReceiverOnes.textContent = `${totalOnes} (${onesParityStr})`;
-
-  // Display status card matching screenshots exactly
+  // Update receiver metadata
   const modeName = currentMode === 0 ? 'Even' : 'Odd';
+  const onesParityStr = totalOnes % 2 === 0 ? 'Even' : 'Odd';
+  if (valReceiverMode) valReceiverMode.textContent = `${modeName} Parity`;
+  if (valReceiverOnes) valReceiverOnes.textContent = `${totalOnes} (${onesParityStr})`;
+
+  // Display status card matching screenshot exactly
   if (isValid === 1) {
-    receiverStatusCard.className = 'receiver-status-card status-valid';
-    valStatusTitle.textContent = 'DATA VALID';
-    valStatusDesc.textContent = `Parity rule verified. Total 1s (${totalOnes}) satisfies the ${modeName} Parity rule.`;
+    if (receiverStatusCard) receiverStatusCard.className = 'verdict-container status-valid';
+    if (valStatusTitle) valStatusTitle.textContent = 'DATA VALID';
+    if (valStatusDesc) {
+      valStatusDesc.textContent = `The total number of 1s is ${onesParityStr.toLowerCase()}, so the parity rule is satisfied.`;
+    }
   } else {
-    receiverStatusCard.className = 'receiver-status-card status-error';
-    valStatusTitle.textContent = 'ERROR DETECTED';
-    valStatusDesc.textContent = `Parity mismatch. The delivered frame does not satisfy the ${modeName} Parity rule.`;
+    if (receiverStatusCard) receiverStatusCard.className = 'verdict-container status-error';
+    if (valStatusTitle) valStatusTitle.textContent = 'DATA CORRUPTED';
+    if (valStatusDesc) {
+      valStatusDesc.textContent = `The total number of 1s is ${onesParityStr.toLowerCase()}, which violates the ${modeName.toLowerCase()} parity rule. Error detected!`;
+    }
   }
 
   updateLiveTerminal();
+}
+
+/**
+ * Highlight Truth Table row matching first 3 bits
+ */
+function highlightTruthTableRow() {
+  const bit0 = document.getElementById('sbit-0')?.textContent.trim() || '0';
+  const bit1 = document.getElementById('sbit-1')?.textContent.trim() || '0';
+  const bit2 = document.getElementById('sbit-2')?.textContent.trim() || '0';
+  const key = `${bit0}${bit1}${bit2}`;
+
+  const rows = document.querySelectorAll('.truth-table tbody tr');
+  rows.forEach(row => {
+    if (row.getAttribute('data-bits') === key) {
+      row.classList.add('row-matched');
+    } else {
+      row.classList.remove('row-matched');
+    }
+  });
 }
 
 /**
@@ -399,16 +436,16 @@ function handleResetAll() {
     const sbtn = document.getElementById(`sbit-${i}`);
     if (sbtn) {
       sbtn.textContent = '0';
-      sbtn.classList.remove('bit-active');
     }
   }
 
   setParityMode(0);
+  highlightTruthTableRow();
   invalidateGeneratedFrame();
 }
 
 /**
- * Load Example Message from screenshots: [1, 0, 1, 1, 0, 1, 1, 1]
+ * Load Example Message: [1, 0, 1, 1, 0, 1, 1, 1]
  */
 function handleLoadExample() {
   const example = [1, 0, 1, 1, 0, 1, 1, 1];
@@ -418,15 +455,11 @@ function handleLoadExample() {
     const sbtn = document.getElementById(`sbit-${i}`);
     if (sbtn) {
       sbtn.textContent = example[i];
-      if (example[i] === 1) {
-        sbtn.classList.add('bit-active');
-      } else {
-        sbtn.classList.remove('bit-active');
-      }
     }
   }
 
-  setParityMode(0); // Even Parity
+  setParityMode(0);
+  highlightTruthTableRow();
   handleGenerateParity();
 }
 
@@ -439,7 +472,6 @@ function updateLiveTerminal() {
   const modeName = currentMode === 0 ? 'EVEN' : 'ODD';
   const onesMsg = c_count_ones();
 
-  // Read current message bits
   const currentBits = [];
   for (let i = 0; i < 8; i++) {
     const btn = document.getElementById(`sbit-${i}`);
@@ -451,7 +483,7 @@ function updateLiveTerminal() {
   text += `   bits = [ ${currentBits.join(' ')} ]\n`;
   text += `   Total 1s in message: ${onesMsg}\n\n`;
 
-  if (isFrameSent || !cardParityResult.classList.contains('hidden')) {
+  if (isFrameSent || (cardParityResult && !cardParityResult.classList.contains('hidden'))) {
     const parityBit = valParityBit ? valParityBit.textContent.trim() : '0';
     text += `2. Generating ${modeName} Parity:\n`;
     text += `   Calculated Parity Bit: ${parityBit}\n`;
@@ -470,7 +502,7 @@ function updateLiveTerminal() {
     for (let i = 0; i < 9; i++) rcvArr.push(c_get_frame(i));
     text += `${rcvArr.join(', ')} ]\n`;
     text += `   Total 1s: ${totalOnes}\n`;
-    text += `   Outcome: ${isValid === 1 ? 'DATA VALID (No errors detected)' : 'ERROR DETECTED (Data Corrupted)'}\n`;
+    text += `   Outcome: ${isValid === 1 ? 'DATA VALID (No errors detected)' : 'DATA CORRUPTED (Error detected)'}\n`;
   } else {
     text += `3. Receiver Check:\n`;
     text += `   AWAITING FRAME DELIVERY...\n`;
@@ -480,14 +512,33 @@ function updateLiveTerminal() {
 }
 
 /**
+ * Scroll reveal for Truth Table section
+ */
+function setupScrollReveal() {
+  if (!truthTableCard) return;
+
+  const observer = new IntersectionObserver((entries) => {
+    entries.forEach(entry => {
+      if (entry.isIntersecting) {
+        truthTableCard.classList.add('visible');
+      }
+    });
+  }, {
+    threshold: 0.15
+  });
+
+  observer.observe(truthTableCard);
+}
+
+/**
  * Setup Event Listeners
  */
 function setupEventListeners() {
-  // Parity mode buttons
-  if (btnModeEven) btnModeEven.addEventListener('click', () => setParityMode(0));
-  if (btnModeOdd) btnModeOdd.addEventListener('click', () => setParityMode(1));
+  // Radio buttons for Parity Mode
+  if (radioEven) radioEven.addEventListener('change', () => setParityMode(0));
+  if (radioOdd) radioOdd.addEventListener('change', () => setParityMode(1));
 
-  // Sender bit boxes (0 to 7)
+  // 8-bit Data boxes (0 to 7)
   for (let i = 0; i < 8; i++) {
     const btn = document.getElementById(`sbit-${i}`);
     if (btn) {
@@ -495,11 +546,11 @@ function setupEventListeners() {
     }
   }
 
-  // Step 1 buttons
+  // Step 1: Generate Parity & Send Frame
   if (btnGenerateParity) btnGenerateParity.addEventListener('click', handleGenerateParity);
   if (btnSendFrame) btnSendFrame.addEventListener('click', handleSendFrame);
 
-  // Step 2 buttons
+  // Step 2: Noise bit clicks & actions
   for (let i = 0; i < 9; i++) {
     const nbtn = document.getElementById(`nbit-${i}`);
     if (nbtn) {
@@ -509,11 +560,11 @@ function setupEventListeners() {
   if (btnResetNoise) btnResetNoise.addEventListener('click', handleResetNoise);
   if (btnDeliverReceiver) btnDeliverReceiver.addEventListener('click', handleDeliverReceiver);
 
-  // Top action buttons
+  // Top header actions
   if (btnResetAll) btnResetAll.addEventListener('click', handleResetAll);
   if (btnDemoExample) btnDemoExample.addEventListener('click', handleLoadExample);
 
-  // Back to top smooth scroll
+  // Smooth scroll to top
   const backToTop = document.getElementById('back-to-top');
   if (backToTop) {
     backToTop.addEventListener('click', (e) => {
@@ -521,14 +572,17 @@ function setupEventListeners() {
       window.scrollTo({ top: 0, behavior: 'smooth' });
     });
   }
+
+  setupScrollReveal();
 }
 
 // Bootstrap
 function bootstrap() {
   initWasmBindings();
   setupEventListeners();
-  // Automatically generate parity for default initial state [1,0,1,1,0,1,1,1]
-  handleGenerateParity();
+  // Keep generated frame hidden initially as requested by user
+  // ("when clicked generate parity bit only then the mesage 1s count to send 9-bit frame appear")
+  invalidateGeneratedFrame();
 }
 
 if (document.readyState === 'loading') {

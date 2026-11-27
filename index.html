@@ -3,322 +3,288 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Even/Odd Parity Simulator</title>
+  <title>Parity Bit Checker</title>
   <link rel="stylesheet" href="style.css">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;600;700&display=swap" rel="stylesheet">
 </head>
 <body>
-  <div class="app-layout">
-    <!-- Header -->
-    <header class="page-header">
-      <div class="header-content">
-        <div class="badge-pill">
-          <span class="dot"></span>
-          <span>COMPUTER NETWORKS ASSIGNMENT</span>
+  <div class="app-container">
+    
+    <!-- Top Header Bar -->
+    <header class="app-header">
+      <div class="header-main">
+        <h1 class="app-title">Parity Bit Checker</h1>
+        <p class="app-subtitle">A simple way to learn how parity bit help check data for errors.</p>
+        <div class="steps-nav">
+          <span class="step-link active" data-step="1">1. create data</span>
+          <span class="step-sep">&bull;</span>
+          <span class="step-link" data-step="2">2. noise</span>
+          <span class="step-sep">&bull;</span>
+          <span class="step-link" data-step="3">3. check the data</span>
         </div>
-        <h1 class="main-title">Even/Odd Parity Simulator</h1>
-        <p class="main-subtitle">Interactive Single-Bit Error Detection Demonstration</p>
       </div>
-      <div class="header-buttons">
-        <button id="btn-demo-example" class="top-btn btn-example" title="Load example message from demo">
-          Load Example Message
-        </button>
-        <button id="btn-reset-all" class="top-btn btn-reset">
-          Reset All
-        </button>
+      <div class="header-quick-actions">
+        <button id="btn-demo-example" class="btn-secondary-sm" title="Load demo sample">Load Example</button>
+        <button id="btn-reset-all" class="btn-secondary-sm btn-danger-sm" title="Reset everything">Reset All</button>
       </div>
     </header>
 
-    <!-- Main 3 Columns Grid -->
-    <main class="simulator-grid">
+    <!-- 3-Column Main Simulator Layout -->
+    <main class="columns-grid">
 
-      <!-- STEP 1: Sender & Parity Generator -->
-      <section class="card-panel" id="panel-sender">
-        <div class="card-header">
-          <div class="step-tag">STEP 1</div>
-          <h2 class="card-title">Sender &amp; Parity Generator</h2>
-          <p class="card-subtitle">Configure 8-bit data message and select parity scheme.</p>
+      <!-- Column 1: Sender & Parity Generator -->
+      <section class="panel-card" id="panel-sender">
+        <div class="panel-header">
+          <h2 class="panel-title">1. Sender &amp; Parity Generator</h2>
+          <p class="panel-desc">Configure an 8-bit message and choose a parity scheme</p>
         </div>
 
-        <div class="card-body">
-          <!-- Parity Mode Selector -->
-          <div class="field-group">
-            <label class="field-label">Parity Mode:</label>
-            <div class="segmented-control" id="mode-selector">
-              <button type="button" class="segment-btn active" id="btn-mode-even">Even Parity</button>
-              <button type="button" class="segment-btn" id="btn-mode-odd">Odd Parity</button>
+        <div class="panel-content">
+          <!-- Parity Mode Radio Selector -->
+          <div class="control-row-group">
+            <div class="parity-mode-bar">
+              <span class="mode-label">Parity Mode</span>
+              <div class="radio-options">
+                <label class="radio-label">
+                  <input type="radio" name="parity-scheme" id="radio-even" value="0" checked>
+                  <span class="radio-custom"></span>
+                  <span class="radio-text">Even parity</span>
+                </label>
+                <label class="radio-label">
+                  <input type="radio" name="parity-scheme" id="radio-odd" value="1">
+                  <span class="radio-custom"></span>
+                  <span class="radio-text">Odd parity</span>
+                </label>
+              </div>
             </div>
-            <p class="field-hint" id="mode-hint">Even: Total 1s in the 9-bit frame must be even.</p>
+            <p class="mode-explanation" id="mode-hint">
+              Even parity : the total number of 1s in the 9-bit frame must be even.
+            </p>
           </div>
 
-          <!-- 8-Bit Data Message -->
-          <div class="field-group">
-            <div class="field-label-row">
-              <label class="field-label">8-Bit Data Message (bits[0..7]):</label>
-              <span class="sub-action-hint">Click any box to toggle 0 / 1</span>
+          <!-- 8-Bit Data Boxes -->
+          <div class="control-row-group">
+            <label class="section-sublabel">8-bit data:</label>
+            <div class="bits-rect-row" id="sender-bits-row">
+              <button type="button" class="bit-rect" id="sbit-0" data-idx="0">1</button>
+              <button type="button" class="bit-rect" id="sbit-1" data-idx="1">0</button>
+              <button type="button" class="bit-rect" id="sbit-2" data-idx="2">1</button>
+              <button type="button" class="bit-rect" id="sbit-3" data-idx="3">1</button>
+              <button type="button" class="bit-rect" id="sbit-4" data-idx="4">0</button>
+              <button type="button" class="bit-rect" id="sbit-5" data-idx="5">1</button>
+              <button type="button" class="bit-rect" id="sbit-6" data-idx="6">1</button>
+              <button type="button" class="bit-rect" id="sbit-7" data-idx="7">1</button>
             </div>
-            <div class="bits-container" id="sender-bits-row">
-              <div class="bit-item">
-                <button type="button" class="bit-button bit-active" id="sbit-0">1</button>
-                <span class="bit-sub">[0]</span>
+            <p class="subtext-hint">Click a bit to change it.</p>
+          </div>
+
+          <!-- Generate Parity Bit Button -->
+          <div class="action-btn-wrap">
+            <button id="btn-generate-parity" class="primary-btn">
+              Generate Parity Bit
+            </button>
+          </div>
+
+          <!-- Generated Results (Appears only after clicking Generate Parity Bit) -->
+          <div class="generated-results-box hidden" id="card-parity-result">
+            <div class="stats-summary-row">
+              <div class="stat-item">
+                <span class="stat-label">Message 1s count :</span>
+                <span class="stat-value" id="val-message-ones">6 (Even)</span>
               </div>
-              <div class="bit-item">
-                <button type="button" class="bit-button" id="sbit-1">0</button>
-                <span class="bit-sub">[1]</span>
+              <div class="stat-item">
+                <span class="stat-label">Parity bit :</span>
+                <span class="stat-value stat-highlight" id="val-parity-bit">0</span>
               </div>
-              <div class="bit-item">
-                <button type="button" class="bit-button bit-active" id="sbit-2">1</button>
-                <span class="bit-sub">[2]</span>
-              </div>
-              <div class="bit-item">
-                <button type="button" class="bit-button bit-active" id="sbit-3">1</button>
-                <span class="bit-sub">[3]</span>
-              </div>
-              <div class="bit-item">
-                <button type="button" class="bit-button" id="sbit-4">0</button>
-                <span class="bit-sub">[4]</span>
-              </div>
-              <div class="bit-item">
-                <button type="button" class="bit-button bit-active" id="sbit-5">1</button>
-                <span class="bit-sub">[5]</span>
-              </div>
-              <div class="bit-item">
-                <button type="button" class="bit-button bit-active" id="sbit-6">1</button>
-                <span class="bit-sub">[6]</span>
-              </div>
-              <div class="bit-item">
-                <button type="button" class="bit-button bit-active" id="sbit-7">1</button>
-                <span class="bit-sub">[7]</span>
-              </div>
+            </div>
+
+            <div class="sent-frame-row">
+              <span class="stat-label">9-bit sent frame :</span>
+              <span class="sent-frame-bits" id="val-sent-frame-text">101101110</span>
+            </div>
+
+            <div class="send-action-wrap">
+              <button id="btn-send-frame" class="primary-btn btn-send-frame">
+                Send 9-bit Frame
+              </button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Column 2: Noise Simulator -->
+      <section class="panel-card panel-inactive" id="panel-noise">
+        <div class="panel-header">
+          <h2 class="panel-title">2. Noise Simulator</h2>
+          <p class="panel-desc">Click any bit to simulate noise in the channel. The last bit is the parity bit.</p>
+        </div>
+
+        <div class="panel-content">
+          <!-- 9-Bit Channel Boxes -->
+          <div class="control-row-group">
+            <div class="bits-rect-row" id="noise-bits-row">
+              <button type="button" class="bit-rect" id="nbit-0" data-idx="0" disabled>1</button>
+              <button type="button" class="bit-rect" id="nbit-1" data-idx="1" disabled>0</button>
+              <button type="button" class="bit-rect" id="nbit-2" data-idx="2" disabled>1</button>
+              <button type="button" class="bit-rect" id="nbit-3" data-idx="3" disabled>1</button>
+              <button type="button" class="bit-rect" id="nbit-4" data-idx="4" disabled>0</button>
+              <button type="button" class="bit-rect" id="nbit-5" data-idx="5" disabled>1</button>
+              <button type="button" class="bit-rect" id="nbit-6" data-idx="6" disabled>1</button>
+              <button type="button" class="bit-rect" id="nbit-7" data-idx="7" disabled>1</button>
+              <button type="button" class="bit-rect bit-parity" id="nbit-8" data-idx="8" disabled title="Parity Bit">0</button>
             </div>
           </div>
 
-          <!-- Generate Parity Button -->
-          <button id="btn-generate-parity" class="action-btn btn-primary">
-            Generate Parity Bit
-          </button>
+          <!-- Channel Noise Status Alert -->
+          <div class="channel-status-line" id="noise-status-alert">
+            <span class="status-indicator-dot"></span>
+            <span class="status-msg-text" id="noise-status-text">Frame loaded: Transmission is clean</span>
+          </div>
 
-          <!-- Generated Parity Results Card -->
-          <div class="results-nested-card hidden" id="card-parity-result">
-            <div class="stat-line">
-              <span class="stat-name">Message 1s Count:</span>
-              <span class="stat-value" id="val-message-ones">6 (Even)</span>
-            </div>
-
-            <div class="parity-bit-display-box">
-              <span class="parity-display-label">Generated 9th Bit (frame[8]):</span>
-              <div class="parity-pill-badge">
-                <span class="parity-square-bit" id="val-parity-bit">0</span>
-                <span class="parity-pill-text">PARITY BIT</span>
-              </div>
-            </div>
-
-            <div class="frame-text-group">
-              <label class="frame-text-label">9-Bit Sent Frame:</label>
-              <div class="frame-code-box" id="val-sent-frame-text">[ 1, 0, 1, 1, 0, 1, 1, 1, 0 ]</div>
-            </div>
-
-            <button id="btn-send-frame" class="action-btn btn-green">
-              Send 9-Bit Frame &rarr;
+          <!-- Actions: Reset Noise & Deliver to Receiver -->
+          <div class="channel-actions-row">
+            <button id="btn-reset-noise" class="secondary-btn" disabled>
+              Reset Noise
+            </button>
+            <button id="btn-deliver-receiver" class="primary-btn" disabled>
+              Deliver to Receiver
             </button>
           </div>
         </div>
       </section>
 
-      <!-- STEP 2: Noise Simulator -->
-      <section class="card-panel panel-dimmed" id="panel-noise">
-        <div class="card-header">
-          <div class="step-tag">STEP 2</div>
-          <h2 class="card-title">Noise Simulator</h2>
-          <p class="card-subtitle">Physical channel simulator. Click any bit to simulate noise.</p>
+      <!-- Column 3: Receiver & Error Checker -->
+      <section class="panel-card panel-inactive" id="panel-receiver">
+        <div class="panel-header">
+          <h2 class="panel-title">3. Receiver &amp; Error Checker</h2>
+          <p class="panel-desc">Received 9-bit frame</p>
         </div>
 
-        <div class="card-body">
-          <div class="field-group">
-            <div class="field-label-row">
-              <label class="field-label">Channel Frame (frame[0..8]):</label>
-              <span class="sub-action-hint">Click a bit box to flip 0 &harr; 1</span>
+        <div class="panel-content">
+          <!-- 9-Bit Received Boxes -->
+          <div class="control-row-group">
+            <div class="bits-rect-row" id="receiver-bits-row">
+              <div class="bit-rect bit-static" id="rbit-0">1</div>
+              <div class="bit-rect bit-static" id="rbit-1">0</div>
+              <div class="bit-rect bit-static" id="rbit-2">1</div>
+              <div class="bit-rect bit-static" id="rbit-3">1</div>
+              <div class="bit-rect bit-static" id="rbit-4">0</div>
+              <div class="bit-rect bit-static" id="rbit-5">1</div>
+              <div class="bit-rect bit-static" id="rbit-6">1</div>
+              <div class="bit-rect bit-static" id="rbit-7">1</div>
+              <div class="bit-rect bit-static bit-parity" id="rbit-8" title="Parity Bit">0</div>
             </div>
-            <div class="bits-container bits-container-9" id="noise-bits-row">
-              <div class="bit-item">
-                <button type="button" class="bit-button" id="nbit-0" disabled>0</button>
-                <span class="bit-sub">[0]</span>
-              </div>
-              <div class="bit-item">
-                <button type="button" class="bit-button" id="nbit-1" disabled>0</button>
-                <span class="bit-sub">[1]</span>
-              </div>
-              <div class="bit-item">
-                <button type="button" class="bit-button" id="nbit-2" disabled>0</button>
-                <span class="bit-sub">[2]</span>
-              </div>
-              <div class="bit-item">
-                <button type="button" class="bit-button" id="nbit-3" disabled>0</button>
-                <span class="bit-sub">[3]</span>
-              </div>
-              <div class="bit-item">
-                <button type="button" class="bit-button" id="nbit-4" disabled>0</button>
-                <span class="bit-sub">[4]</span>
-              </div>
-              <div class="bit-item">
-                <button type="button" class="bit-button" id="nbit-5" disabled>0</button>
-                <span class="bit-sub">[5]</span>
-              </div>
-              <div class="bit-item">
-                <button type="button" class="bit-button" id="nbit-6" disabled>0</button>
-                <span class="bit-sub">[6]</span>
-              </div>
-              <div class="bit-item">
-                <button type="button" class="bit-button" id="nbit-7" disabled>0</button>
-                <span class="bit-sub">[7]</span>
-              </div>
-              <div class="bit-item bit-item-parity">
-                <button type="button" class="bit-button" id="nbit-8" disabled>0</button>
-                <span class="bit-sub parity-sub">[8]<br>PARITY</span>
-              </div>
+            <p class="corrupt-subtext" id="corrupt-indicator-text">Red boxes indicate corrupted bits</p>
+          </div>
+
+          <!-- Receiver Verification Metadata -->
+          <div class="receiver-details">
+            <div class="detail-row">
+              <span class="detail-label">Expected Scheme :</span>
+              <span class="detail-val" id="val-receiver-mode">Even Parity</span>
+            </div>
+            <div class="detail-row">
+              <span class="detail-label">Total 1s counted :</span>
+              <span class="detail-val" id="val-receiver-ones">6 (Even)</span>
             </div>
           </div>
 
-          <!-- Channel Status Alert Box -->
-          <div class="channel-status-banner status-waiting" id="noise-status-alert">
-            <span class="status-dot"></span>
-            <span class="status-msg" id="noise-status-text">Waiting for a frame from the sender.</span>
-          </div>
-
-          <!-- Channel Actions -->
-          <div class="panel-button-row">
-            <button id="btn-reset-noise" class="action-btn btn-secondary" disabled>
-              Reset Noise (Clean)
-            </button>
-            <button id="btn-deliver-receiver" class="action-btn btn-primary" disabled>
-              Deliver to Receiver &rarr;
-            </button>
-          </div>
-        </div>
-      </section>
-
-      <!-- STEP 3: Receiver & Error Checker -->
-      <section class="card-panel panel-dimmed" id="panel-receiver">
-        <div class="card-header">
-          <div class="step-tag">STEP 3</div>
-          <h2 class="card-title">Receiver &amp; Error Checker</h2>
-          <p class="card-subtitle">Validates parity rule on the delivered 9-bit frame.</p>
-        </div>
-
-        <div class="card-body">
-          <div class="field-group">
-            <div class="field-label-row">
-              <label class="field-label">Received 9-Bit Frame:</label>
-              <span class="sub-action-hint hint-red">Red boxes indicate corrupted bits</span>
-            </div>
-            <div class="bits-container bits-container-9" id="receiver-bits-row">
-              <div class="bit-item">
-                <div class="bit-button bit-static" id="rbit-0">-</div>
-                <span class="bit-sub">[0]</span>
-              </div>
-              <div class="bit-item">
-                <div class="bit-button bit-static" id="rbit-1">-</div>
-                <span class="bit-sub">[1]</span>
-              </div>
-              <div class="bit-item">
-                <div class="bit-button bit-static" id="rbit-2">-</div>
-                <span class="bit-sub">[2]</span>
-              </div>
-              <div class="bit-item">
-                <div class="bit-button bit-static" id="rbit-3">-</div>
-                <span class="bit-sub">[3]</span>
-              </div>
-              <div class="bit-item">
-                <div class="bit-button bit-static" id="rbit-4">-</div>
-                <span class="bit-sub">[4]</span>
-              </div>
-              <div class="bit-item">
-                <div class="bit-button bit-static" id="rbit-5">-</div>
-                <span class="bit-sub">[5]</span>
-              </div>
-              <div class="bit-item">
-                <div class="bit-button bit-static" id="rbit-6">-</div>
-                <span class="bit-sub">[6]</span>
-              </div>
-              <div class="bit-item">
-                <div class="bit-button bit-static" id="rbit-7">-</div>
-                <span class="bit-sub">[7]</span>
-              </div>
-              <div class="bit-item bit-item-parity">
-                <div class="bit-button bit-static" id="rbit-8">-</div>
-                <span class="bit-sub parity-sub">[8]<br>PARITY</span>
-              </div>
-            </div>
-          </div>
-
-          <!-- Receiver Info Row -->
-          <div class="receiver-meta-rows">
-            <div class="meta-row">
-              <span class="meta-label">Expected Scheme:</span>
-              <span class="meta-value" id="val-receiver-mode">Even Parity</span>
-            </div>
-            <div class="meta-row">
-              <span class="meta-label">Total 1s Counted:</span>
-              <span class="meta-value" id="val-receiver-ones">-</span>
-            </div>
-          </div>
-
-          <!-- Receiver Status Card -->
-          <div class="receiver-status-card status-awaiting" id="receiver-status-card">
-            <div class="result-headline" id="val-status-title">AWAITING DELIVERY</div>
-            <div class="result-subtext" id="val-status-desc">Complete Step 1 and Step 2 to verify data integrity.</div>
+          <!-- Status Validation Verdict -->
+          <div class="verdict-container status-valid" id="receiver-status-card">
+            <div class="verdict-title" id="val-status-title">DATA VALID</div>
+            <p class="verdict-explanation" id="val-status-desc">
+              The total number of 1s is even, so the parity rule is satisfied.
+            </p>
           </div>
         </div>
       </section>
 
     </main>
 
-    <!-- Bottom Implementation Note & Live C Terminal -->
-    <div class="note-center-wrapper">
-      <p class="implementation-note">
-        <strong>IMPLEMENTATION NOTE</strong> Core logic follows the C parity algorithm. This interface visualizes generation, transmission, and receiver validation.
-      </p>
-    </div>
-
-    <!-- Live C Program Output Terminal -->
-    <section class="terminal-card">
-      <div class="terminal-header">
-        <div class="terminal-dots">
-          <span class="dot dot-red"></span>
-          <span class="dot dot-yellow"></span>
-          <span class="dot dot-green"></span>
-        </div>
-        <div class="terminal-filename">parity_demo.c &mdash; output</div>
-        <div class="terminal-badge">LIVE</div>
+    <!-- Section 4: Parity Bit Truth Table (Appears when scrolled down) -->
+    <section class="truth-table-section scroll-reveal" id="truth-table-card">
+      <div class="truth-table-header">
+        <h2 class="section-title">4. Parity Bit Truth Table</h2>
+        <p class="section-desc">Reference table for 3-bit data demonstrating Parity Bit generation logic</p>
       </div>
-      <div class="terminal-content">
-        <pre id="c-console-output">Even/Odd Parity Bit Generator &amp; Checker
----------------------------------------
 
-1. Loading 8-Bit Message:
-   bits = [ 1 0 1 1 0 1 1 1 ]
-   Total 1s in message: 6
-
-2. Generating EVEN Parity:
-   Calculated Parity Bit: 0
-   9-Bit Frame: [ 1, 0, 1, 1, 0, 1, 1, 1, 0 ]
-
-3. Receiver Check:
-   AWAITING FRAME DELIVERY...</pre>
+      <div class="table-responsive-wrapper">
+        <table class="truth-table">
+          <thead>
+            <tr>
+              <th class="col-bits">
+                <span class="th-main">Data bits</span>
+                <span class="th-sub">A &nbsp; B &nbsp; C</span>
+              </th>
+              <th>Number of 1s</th>
+              <th>Even Parity Bit</th>
+              <th>Odd Parity Bit</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr data-bits="000">
+              <td class="cell-bits">0 &nbsp; 0 &nbsp; 0</td>
+              <td>0 (Even)</td>
+              <td class="cell-parity">0</td>
+              <td class="cell-parity">1</td>
+            </tr>
+            <tr data-bits="001">
+              <td class="cell-bits">0 &nbsp; 0 &nbsp; 1</td>
+              <td>1 (Odd)</td>
+              <td class="cell-parity">1</td>
+              <td class="cell-parity">0</td>
+            </tr>
+            <tr data-bits="010">
+              <td class="cell-bits">0 &nbsp; 1 &nbsp; 0</td>
+              <td>1 (Odd)</td>
+              <td class="cell-parity">1</td>
+              <td class="cell-parity">0</td>
+            </tr>
+            <tr data-bits="011">
+              <td class="cell-bits">0 &nbsp; 1 &nbsp; 1</td>
+              <td>2 (Even)</td>
+              <td class="cell-parity">0</td>
+              <td class="cell-parity">1</td>
+            </tr>
+            <tr data-bits="100">
+              <td class="cell-bits">1 &nbsp; 0 &nbsp; 0</td>
+              <td>1 (Odd)</td>
+              <td class="cell-parity">1</td>
+              <td class="cell-parity">0</td>
+            </tr>
+            <tr data-bits="101">
+              <td class="cell-bits">1 &nbsp; 0 &nbsp; 1</td>
+              <td>2 (Even)</td>
+              <td class="cell-parity">0</td>
+              <td class="cell-parity">1</td>
+            </tr>
+            <tr data-bits="110">
+              <td class="cell-bits">1 &nbsp; 1 &nbsp; 0</td>
+              <td>2 (Even)</td>
+              <td class="cell-parity">0</td>
+              <td class="cell-parity">1</td>
+            </tr>
+            <tr data-bits="111">
+              <td class="cell-bits">1 &nbsp; 1 &nbsp; 1</td>
+              <td>3 (Odd)</td>
+              <td class="cell-parity">1</td>
+              <td class="cell-parity">0</td>
+            </tr>
+          </tbody>
+        </table>
       </div>
     </section>
 
     <!-- Footer -->
     <footer class="app-footer">
-      <div class="footer-left">PARITY LAB</div>
-      <div class="footer-center">Single-bit error detection &bull; Interactive C algorithm demonstration</div>
-      <div class="footer-right"><a href="#top" id="back-to-top">Back to top &uarr;</a></div>
+      <div>Parity Bit Checker &bull; Single-Bit Error Detection</div>
+      <div><a href="#top" id="back-to-top">Back to top &uarr;</a></div>
     </footer>
+
   </div>
 
-  <!-- WebAssembly Glue and Controller -->
   <script src="parity.js"></script>
   <script src="script.js"></script>
 </body>
